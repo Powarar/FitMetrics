@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.workout_repo import WorkoutRepository
-from app.models.workout import Workout
+from app.db.models.workout import Workout, Exercise
 from app.schemas.workout import WorkoutCreate
 
 
@@ -13,12 +13,25 @@ class WorkoutService:
 
     async def create_workout(self, payload: WorkoutCreate) -> Workout:
         async with self._session.begin():
-            workout = await self._repo.create_workout(
-                user_id=payload.user_id,
-                exercise_name=payload.exercise_name,
-                muscle_group=payload.muscle_group,
-                sets=payload.sets,
-                reps=payload.reps,
-                weight=payload.weight,
-            )
-        return workout
+            return await self._repo.create_workout(payload)
+
+    async def list_workouts(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int,
+    ) -> list[Workout]:
+        list_workouts = await self._repo.list_workouts(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+        )
+        return list_workouts
+    
+    #TODO async def metrics(
+    #     self,
+        
+            
+
+
+    # )

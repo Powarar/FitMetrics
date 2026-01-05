@@ -1,50 +1,55 @@
-
 from typing import Optional, List
+
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.models.workout import Workout, Exercise
+from app.db.models.workout import Workout, Exercise
+from app.schemas.workout import WorkoutCreate
+
 
 class WorkoutRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
     async def get_exercise_by_name(self, name: str) -> Optional[Exercise]:
-        res = await self.session.execute(select(Exercise).where(Exercise.name == name))
-        return res.scalar_one_or_none()
+        stmt = select(Exercise).where(Exercise.name == name)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
 
-    async def get_or_create_exercise(self, name: str, muscle_group: str) -> Exercise:
-        ex = await self.get_exercise_by_name(name)
-        if ex:
-            return ex
-        ex = Exercise(name=name, muscle_group=muscle_group)
-        self.session.add(ex)
-        return ex
+    async def get_or_create_exercise(
+        self,
+        name: str,
+        muscle_group: Optional[str] = None,
+    ) -> Exercise:
+        exercise = await self.get_exercise_by_name(name)
+        if exercise is not None:
+            return exercise
 
-    async def create_workout(
+        exercise = Exercise(name=name, muscle_group=muscle_group)
+        self._session.add(exercise)
+        return exercise
+
+    async def create_workout(self, payload: WorkoutCreate) -> Workout:
+        exercise = await self.get_or_create_exercise(
+            name=payload.exercise_name,
+            muscle_group=payload.muscle_group,
+        )
+
+        workout = Workout(
+            **payload.model_dump(exclude={"exercise_name", "muscle_group"}),
+            exercise=exercise,
+            total_volume=payload.sets * payload.reps * payload.weight,
+        )
+        self._session.add(workout)
+        return workout
+
+    async def list_workouts(
         self,
         user_id: int,
-        exercise_name: str,
-        muscle_group: str,
-        sets: int,
-        reps: int,
-        weight: float,
-    ) -> Workout:
-        ex = await self.get_or_create_exercise(exercise_name, muscle_group)
-
-        w = Workout(
-            user_id=user_id,
-            exercise=ex,
-            sets=sets,
-            reps=reps,
-            weight=weight,
-            total_volume=float(sets * reps * weight),
-        )
-        self.session.add(w)
-        return w
-
-    async def list_workouts(self, user_id: int, limit: int = 50, offset: int = 0) -> List[Workout]:
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Workout]:
         stmt = (
             select(Workout)
             .options(joinedload(Workout.exercise))
@@ -53,16 +58,23 @@ class WorkoutRepository:
             .limit(limit)
             .offset(offset)
         )
-        res = await self.session.execute(stmt)
-        return list(res.scalars().all())
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
 
     async def metrics(self, user_id: int) -> dict:
-        stmt = select(
-            func.coalesce(func.sum(Workout.total_volume), 0).label("total"),
-            func.coalesce(func.avg(Workout.total_volume), 0).label("avg"),
-            func.count(Workout.id).label("count"),
-        ).where(Workout.user_id == user_id)
+        stmt = (
+            select(
+                func.coalesce(func.sum(Workout.total_volume), 0).label("total"),
+                func.coalesce(func.avg(Workout.total_volume), 0).label("avg"),
+                func.count(Workout.id).label("count"),
+            )
+            .where(Workout.user_id == user_id)
+        )
 
-        res = await self.session.execute(stmt)
-        row = res.one()
-        return {"total_volume": float(row.total), "avg_volume": float(row.avg), "count": int(row.count)}
+        result = await self._session.execute(stmt)
+        row = result.one()
+        return {
+            "total_volume": float(row.total),
+            "avg_volume": float(row.avg),
+            "count": int(row.count), # type: ignore
+        }
