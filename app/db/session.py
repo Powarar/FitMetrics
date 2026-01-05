@@ -16,3 +16,8 @@ AsyncSessionLocal = async_sessionmaker(
 
 async def close_engine() -> None:
     await engine.dispose()
+
+
+async def get_session():
+    async with AsyncSessionLocal() as session:
+        yield session

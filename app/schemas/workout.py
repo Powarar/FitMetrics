@@ -2,6 +2,12 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
+class ExerciseOut(BaseModel):
+    id: UUID
+    name: str
+    muscle_group: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 class WorkoutCreate(BaseModel):
     user_id: int = Field(ge=1)
@@ -13,14 +19,14 @@ class WorkoutCreate(BaseModel):
 
 
 class WorkoutOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    
     id: UUID
     user_id: int
     date: datetime
+    sets: int
+    reps: int
+    weight: float
     total_volume: float
-    exercise_name: str
-
+    exercise: ExerciseOut
 
 
 class MetricsOut(BaseModel):
