@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SYNC_DATABASE_URL: str
 
-    REDIS_URL: str | None = None
+
+    REDIS_URL: str
+    CACHE_TTL_DEFAULT: int
 
 settings = Settings() # type: ignore

@@ -72,7 +72,7 @@ class WorkoutRepository:
             select(Workout)
             .options(joinedload(Workout.exercise))
             .where(Workout.user_id == user_id)
-            .order_by(Workout.date.desc())
+            .order_by(Workout.performed_at.desc())
             .limit(limit)
             .offset(offset)
         )
@@ -97,5 +97,5 @@ class WorkoutRepository:
         return WorkoutMetrics(
             total_volume=float(row.total),
             avg_volume=float(row.avg),
-            count=int(row.count),
+            count=int(row.count), # type: ignore
         )

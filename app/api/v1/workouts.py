@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,14 +27,14 @@ async def create_workout(
 
 @router.get(
     "",
-    response_model=List[WorkoutOut],
+    response_model=list[WorkoutOut],
 )
 async def list_workouts(
     user_id: int = Query(..., gt=0),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: WorkoutService = Depends(get_workout_service),
-) -> List[WorkoutOut]:
+) -> list[WorkoutOut]:
     workouts = await service.list_workouts(
         user_id=user_id,
         limit=limit,

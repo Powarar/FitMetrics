@@ -5,13 +5,12 @@ from typing import List
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, func
-from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 
-class Exercise(Base, AsyncAttrs):
+class Exercise(Base):
     __tablename__ = "exercises"
 
     name: Mapped[str] = mapped_column(unique=True, index=True)
@@ -20,11 +19,11 @@ class Exercise(Base, AsyncAttrs):
     workouts: Mapped[List["Workout"]] = relationship(back_populates="exercise")
 
 
-class Workout(Base, AsyncAttrs):
+class Workout(Base):
     __tablename__ = "workouts"
     
     user_id: Mapped[int] = mapped_column(index=True)
-    date: Mapped[datetime] = mapped_column(server_default=func.now())
+    performed_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     sets: Mapped[int]
     reps: Mapped[int]
