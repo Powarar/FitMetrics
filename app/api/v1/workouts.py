@@ -53,5 +53,5 @@ async def get_workout_metrics(
     user_id: int = Path(..., gt=0),
     service: WorkoutService = Depends(get_workout_service),
 ) -> MetricsOut:
-    metrics = await service.metrics(user_id=user_id)
+    metrics = await service.get_metrics(user_id=user_id)
     return metrics
