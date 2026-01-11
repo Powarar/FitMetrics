@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from app.db.models.users import Users
+from app.schemas.token import Token
 from app.schemas.users import UserCreate
-from app.core.security import get_password_hash, verify_password
+from app.core.security import create_access_token, get_password_hash, verify_password
 
 
 class UserService:
@@ -30,14 +31,13 @@ class UserService:
             "is_active": True,
         }
 
-        async with self.session.begin():
-            result = await self.session.execute(
-                insert(Users).values(user_data).returning(Users)
+        result = await self.session.execute(
+            insert(Users).values(user_data).returning(Users)
             )
-            user: Users = result.scalar_one()
+        user: Users = result.scalar_one()
         return user
 
-    async def authenticate(self, email: str, password: str) -> Users:
+    async def authenticate(self, email: str, password: str) -> Token:
         result = await self.session.execute(
             select(Users).where(Users.email == email)
         )
@@ -52,7 +52,8 @@ class UserService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Inactive user",
             )
-        return user
+        access_token = create_access_token({"sub": str(user.id)})
+        return Token(access_token=access_token)
 
     async def get_by_id(self, user_id):
         result = await self.session.execute(

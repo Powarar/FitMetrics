@@ -28,6 +28,7 @@ async def create_workout(
 @router.get(
     "",
     response_model=list[WorkoutOut],
+    
 )
 async def list_workouts(
     user_id: int = Query(..., gt=0),

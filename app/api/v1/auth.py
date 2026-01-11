@@ -8,6 +8,7 @@ from jose import JWTError
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.db.session import get_session
 from app.schemas.users import UserCreate, UserOut
 from app.schemas.token import Token
@@ -41,35 +42,14 @@ async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     service: UserService = Depends(get_user_service),
 ) -> Token:
-    # OAuth2PasswordRequestForm использует username, поэтому под email:
-    user_orm: Users = await service.authenticate(
+
+    return await service.authenticate(
         email=form_data.username,
         password=form_data.password,
     )
-    access_token = create_access_token({"sub": str(user_orm.id)})
-    return Token(access_token=access_token)
 
-#TODO переписать в deps
-async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    session: AsyncSession = Depends(get_session),
-) -> Users:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = decode_access_token(token)
-        user_id_str: str | None = payload.get("sub")
-        if user_id_str is None:
-            raise credentials_exception
-        user_id = UUID(user_id_str)
-    except (JWTError, ValueError):
-        raise credentials_exception
 
-    service = UserService(session=session)
-    return await service.get_by_id(user_id)
+
 
 
 @router.get("/me", response_model=UserOut)
