@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.db.models.workout import Exercise, Workout
+from app.db.models.workouts import Exercise, Workout
 from app.schemas.workout import WorkoutCreate
 
 

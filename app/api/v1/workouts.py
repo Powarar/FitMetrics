@@ -22,7 +22,7 @@ async def create_workout(
     service: WorkoutService = Depends(get_workout_service),
 ) -> WorkoutOut:
     workout = await service.create_workout(payload)
-    return workout
+    return workout # type: ignore
 
 
 @router.get(
@@ -40,7 +40,7 @@ async def list_workouts(
         limit=limit,
         offset=offset,
     )
-    return workouts
+    return workouts # type: ignore
 
 
 @router.get(
@@ -52,4 +52,4 @@ async def get_workout_metrics(
     service: WorkoutService = Depends(get_workout_service),
 ) -> MetricsOut:
     metrics = await service.get_metrics(user_id=user_id)
-    return metrics
+    return metrics # type: ignore

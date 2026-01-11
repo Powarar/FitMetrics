@@ -55,6 +55,9 @@ python: ## Открыть Python REPL в контейнере
 
 # ==================== Database ====================
 
+psql: ## Открыть psql в контейнере
+	docker compose exec postgres psql -U sportuser -d sportdb
+
 migrate: ## Применить миграции Alembic
 	docker-compose exec app alembic upgrade head
 

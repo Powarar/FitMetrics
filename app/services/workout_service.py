@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.workout import Workout
+from app.db.models.workouts import Workout
 from app.repositories.workout_repo import WorkoutMetrics, WorkoutRepository
 from app.schemas.workout import WorkoutCreate
 from app.core.cache import cache_manager

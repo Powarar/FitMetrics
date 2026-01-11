@@ -8,7 +8,7 @@ from typing import TypedDict, Sequence
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.workout import Workout
+from app.db.models.workouts import Workout
 
 class MetricsSummaryRow(TypedDict):
     total_volume: float

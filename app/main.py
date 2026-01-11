@@ -5,6 +5,7 @@ from app.core.cache import cache_manager
 from app.core.middleware import logging_middleware
 from app.api.v1.workouts import router as workout_router
 from app.api.v1.metrics import router as metrics_router
+from app.api.v1.auth import router as auth_router
 from app.core.config import settings
 
 @asynccontextmanager
@@ -23,6 +24,7 @@ app = FastAPI()
 app.middleware("http")(logging_middleware)
 app.include_router(workout_router)
 app.include_router(metrics_router)
+app.include_router(auth_router)
 
 @app.get('/health')
 def get_health():
