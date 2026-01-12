@@ -1,4 +1,3 @@
-# app/services/user_service.py
 from uuid import uuid4
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,18 +23,19 @@ class UserService:
                 detail="User with this email already exists",
             )
 
-        user_data = {
-            "id": uuid4(),
-            "email": user_in.email,
-            "hashed_password": get_password_hash(user_in.password.get_secret_value()),
-            "is_active": True,
-        }
-
-        result = await self.session.execute(
-            insert(Users).values(user_data).returning(Users)
-            )
-        user: Users = result.scalar_one()
+        user = Users(
+            email=user_in.email,
+            hashed_password=get_password_hash(user_in.password.get_secret_value()),
+            is_active=True,
+        )
+        
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
         return user
+
+
 
     async def authenticate(self, email: str, password: str) -> Token:
         result = await self.session.execute(

@@ -16,6 +16,7 @@ services:
 
   api:
     build: .
+    container_name: api
     working_dir: /app
     ports:
       - "8000:8000"

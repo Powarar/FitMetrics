@@ -79,6 +79,8 @@ downgrade: ## Откатить последнюю миграцию
 db-reset: ## Пересоздать БД (УДАЛИТ ВСЕ ДАННЫЕ!)
 	docker-compose down -v
 	docker-compose up -d postgres redis
+	@echo "$(YELLOW)Ждём запуска Postgres...$(RESET)"
+	@sleep 3
 	docker-compose up -d api
 	$(MAKE) migrate
 
