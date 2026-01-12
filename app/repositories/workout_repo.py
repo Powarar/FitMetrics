@@ -2,10 +2,11 @@
 
 from collections.abc import Sequence
 from typing import TypedDict
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 
 from app.db.models.workouts import Exercise, Workout
 from app.schemas.workout import WorkoutCreate
@@ -45,7 +46,7 @@ class WorkoutRepository:
         self._session.add(exercise)
         return exercise
     
-    async def create_workout(self, payload: WorkoutCreate) -> Workout:
+    async def create_workout(self, payload: WorkoutCreate, user_id: UUID) -> Workout:
         """Создать новую тренировку со связанным упражнением."""
         exercise = await self.get_or_create_exercise(
             name=payload.exercise_name,
@@ -53,49 +54,35 @@ class WorkoutRepository:
         )
         
         workout = Workout(
-            **payload.model_dump(exclude={"exercise_name", "muscle_group"}),
-            exercise=exercise,
+            user_id=user_id, 
+            sets=payload.sets,
+            reps=payload.reps,
+            weight=payload.weight,
             total_volume=payload.sets * payload.reps * payload.weight,
+            exercise=exercise,
         )
         
         self._session.add(workout)
+        await self._session.flush()
         return workout
     
     async def list_workouts(
         self,
-        user_id: int,
+        user_id: UUID,
         limit: int = 50,
         offset: int = 0,
     ) -> Sequence[Workout]:
         """Получить список тренировок пользователя с пагинацией."""
         stmt = (
             select(Workout)
-            .options(joinedload(Workout.exercise))
             .where(Workout.user_id == user_id)
+            .options(
+                selectinload(Workout.exercise)
+            )
+            .limit(limit).offset(offset)
             .order_by(Workout.performed_at.desc())
-            .limit(limit)
-            .offset(offset)
         )
         
         result = await self._session.execute(stmt)
         return result.scalars().all()
     
-    async def metrics(self, user_id: int) -> WorkoutMetrics:
-        """Рассчитать агрегированные метрики тренировок пользователя."""
-        stmt = (
-            select(
-                func.coalesce(func.sum(Workout.total_volume), 0).label("total"),
-                func.coalesce(func.avg(Workout.total_volume), 0).label("avg"),
-                func.count(Workout.id).label("count"),
-            )
-            .where(Workout.user_id == user_id)
-        )
-        
-        result = await self._session.execute(stmt)
-        row = result.one()
-        
-        return WorkoutMetrics(
-            total_volume=float(row.total),
-            avg_volume=float(row.avg),
-            count=int(row.count), # type: ignore
-        )

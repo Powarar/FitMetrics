@@ -20,4 +20,11 @@ async def close_engine() -> None:
 
 async def get_session():
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            async with session.begin():
+                yield session
+        
+        except Exception:
+            await session.rollback()
+            raise
+

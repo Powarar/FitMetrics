@@ -12,7 +12,7 @@ from app.core.security import create_access_token, decode_access_token, get_pass
 
 
 class UserService:
-    def __init__(self, session: AsyncSession, redis_client: Redis = None):
+    def __init__(self, session: AsyncSession, redis_client: Redis | None = None):
         self.session = session
         self.redis = redis_client
 
@@ -57,6 +57,7 @@ class UserService:
             )
         access_token = create_access_token({"sub": str(user.id)})
         return Token(access_token=access_token)
+
 
     async def get_by_id(self, user_id):
         result = await self.session.execute(
