@@ -1,4 +1,6 @@
+from datetime import datetime
 from uuid import uuid4
+from redis.asyncio import Redis
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
@@ -6,12 +8,13 @@ from fastapi import HTTPException, status
 from app.db.models.users import Users
 from app.schemas.token import Token
 from app.schemas.users import UserCreate
-from app.core.security import create_access_token, get_password_hash, verify_password
+from app.core.security import create_access_token, decode_access_token, get_password_hash, verify_password
 
 
 class UserService:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, redis_client: Redis = None):
         self.session = session
+        self.redis = redis_client
 
     async def register(self, user_in: UserCreate) -> Users:
         existing = await self.session.execute(
@@ -63,3 +66,26 @@ class UserService:
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         return user
+
+    async def logout(self, token: str) -> None:
+        payload = decode_access_token(token)
+
+        jti = payload["jti"]
+        exp = payload["exp"]
+
+        if not jti or not exp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token"
+            )
+
+        now = datetime.now().timestamp()
+        ttl = int(exp - now)
+
+        if ttl > 0 and self.redis:
+            await self.redis.setex(
+                f"blacklist:{jti}",
+                ttl,
+                "revoked"
+            )
+        return None

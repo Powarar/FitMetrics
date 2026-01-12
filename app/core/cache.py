@@ -27,6 +27,12 @@ class CacheManager:
         self._prefix = prefix
         self._redis_url = redis_url
 
+    def get_client(self) -> Redis:
+        if not self._redis:
+            raise RuntimeError("Redis not connected")
+        return self._redis
+
+
     async def connect(self) -> None:
         self._redis = await aioredis.from_url(
             self._redis_url,

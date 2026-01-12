@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     finally:
         await cache_manager.disconnect()
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.middleware("http")(logging_middleware)
 app.include_router(workout_router)
