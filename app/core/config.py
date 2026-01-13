@@ -14,4 +14,10 @@ class Settings(BaseSettings):
     REDIS_URL: str
     CACHE_TTL_DEFAULT: int
 
+
+class TestSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env.test", extra="ignore")
+    TEST_DATABASE_URL: str
+
 settings = Settings() # type: ignore
+test_settings = TestSettings() # type: ignore

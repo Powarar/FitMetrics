@@ -12,6 +12,7 @@ from app.core.config import settings
 async def lifespan(app: FastAPI):
     cache_manager._redis_url = settings.REDIS_URL
     cache_manager._default_ttl = settings.CACHE_TTL_DEFAULT
+    
     await cache_manager.connect()
 
     try:
@@ -19,13 +20,16 @@ async def lifespan(app: FastAPI):
     finally:
         await cache_manager.disconnect()
 
-app = FastAPI(lifespan=lifespan)
+
+app = FastAPI(lifespan=lifespan, title="FitMetrics API")
 
 app.middleware("http")(logging_middleware)
-app.include_router(workout_router)
-app.include_router(metrics_router)
-app.include_router(auth_router)
+
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(workout_router, prefix="/api/v1")
+app.include_router(metrics_router, prefix="/api/v1")
+
 
 @app.get('/health')
 def get_health():
-    return {"status" : "ok"}
+    return {"status": "ok"}
