@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import cached
-from app.repositories.metrics_repo import MetricsRepository, MetricsSummaryRow, WorkoutCountRow
+from app.repositories.metrics_repo import MetricsRepository, MetricsSummaryRow
 from app.repositories.workout_repo import WorkoutMetrics
 
 
@@ -31,7 +31,7 @@ class MetricsService:
     async def get_workout_timeline(self, days: int) -> list[WorkoutCountRow]:
         """Таймлайн тренировок только для текущего пользователя."""
         rows = await self._repo.get_workout_timeline(
-            user_id=self._user_id,  # ← Только свои данные
+            user_id=self._user_id,
             days=days
         )
         return list(rows)

@@ -6,6 +6,9 @@ class MetricsSummaryResponse(BaseModel):
     avg_volume: float = Field(..., description="Средний объём на тренировку")
     workouts_count: int = Field(..., description="Количество тренировок")
 
-class WorkoutCountPoint(BaseModel):
-    date: Date = Field(...)
-    workouts_count: int = Field(...)
+class TimelineItem(BaseModel):
+    date: Date
+    workouts_count: int
+    total_volume: float
+    total_sets: int
+    avg_weight: float | None = None

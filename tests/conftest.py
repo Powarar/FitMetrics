@@ -3,7 +3,6 @@ import asyncio
 from typing import AsyncGenerator, Generator
 from datetime import datetime, timedelta
 
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -59,7 +58,6 @@ async def setup_test_db():
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Создаёт изолированную сессию БД с транзакцией.
-    После теста делает rollback - все изменения откатываются автоматически.
     """
     connection = await test_engine.connect()
     transaction = await connection.begin()
@@ -68,7 +66,6 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     
     yield session
     
-    # Cleanup: откатываем транзакцию (все изменения исчезают)
     await session.close()
     await transaction.rollback()
     await connection.close()

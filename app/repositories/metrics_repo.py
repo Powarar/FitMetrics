@@ -1,14 +1,13 @@
 from __future__ import annotations
-from uuid import UUID  # ← Добавьте импорт
+from uuid import UUID 
 
 from datetime import datetime, timedelta
 from typing import TypedDict, Sequence
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, select, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.workouts import Workout
-from app.repositories.workout_repo import WorkoutMetrics
 
 
 class MetricsSummaryRow(TypedDict):
@@ -17,9 +16,6 @@ class MetricsSummaryRow(TypedDict):
     workouts_count: int
 
 
-class WorkoutCountRow(TypedDict):
-    date: datetime
-    workouts_count: int
 
 
 class MetricsRepository:
@@ -28,7 +24,7 @@ class MetricsRepository:
 
     async def get_summary(
         self, 
-        user_id: UUID,  # ← Добавлен + UUID
+        user_id: UUID,
         days: int
     ) -> MetricsSummaryRow:
         """Сводка метрик для конкретного пользователя."""
@@ -41,7 +37,7 @@ class MetricsRepository:
                 func.count(Workout.id).label("workouts_count"),
             )
             .where(
-                Workout.user_id == user_id,  # ← Критично! Только свои данные
+                Workout.user_id == user_id,
                 Workout.performed_at >= date_from
             )
         )
@@ -56,33 +52,54 @@ class MetricsRepository:
         )
 
     async def get_workout_timeline(
+            
         self,
-        user_id: UUID,  # int → UUID
+        user_id: UUID,
         days: int,
-    ) -> Sequence[WorkoutCountRow]:
-        date_from = datetime.now() - timedelta(days=days)
+    ):
+        """Сводка метрик для таймлайна тренировок"""
+        start_date = datetime.now() - timedelta(days=days)
 
-        stmt: Select = (
-            select(
-                func.date(Workout.performed_at).label("date"),
-                func.count(Workout.id).label("workouts_count"),
-            )
-            .where(
-                Workout.user_id == user_id,  # Уже было, но тип исправлен
-                Workout.performed_at >= date_from,
-            )
-            .group_by(func.date(Workout.performed_at))
-            .order_by(func.date(Workout.performed_at))
+        stmt = (
+            
+        select(
+            cast(Workout.performed_at, Date).label("date"),
+            func.count(Workout.id).label("total_sets"),
+            func.count(func.distinct(Workout.exercise_id)).label("workouts_count"),
+            func.sum(Workout.total_volume).label("total_volume"),
+            func.avg(Workout.weight).label("avg_weight"),
         )
-
+        .where(Workout.user_id == user_id)
+        .where(Workout.performed_at >= start_date)
+        .group_by(cast(Workout.performed_at, Date))
+        .order_by(cast(Workout.performed_at, Date))
+    )
+    
         result = await self._session.execute(stmt)
-        rows = result.mappings().all()
+        rows = result.all()
 
-        return [
-            WorkoutCountRow(
-                date=row["date"],
-                workouts_count=row["workouts_count"],
-            )
-            for row in rows
-        ]
+        timeline = {}
+        current = start_date.date()
+        end = datetime.now().date()
+        
+        while current <= end:
+            timeline[current] = {
+                "date": current,
+                "workouts_count": 0,
+                "total_sets": 0,
+                "total_volume": 0.0,
+                "avg_weight": None
+            }
+            current += timedelta(days=1)
+        
+        for row in rows:
+            timeline[row.date] = {
+                "date": row.date,
+                "workouts_count": row.workouts_count,
+                "total_sets": row.total_sets,
+                "total_volume": float(row.total_volume or 0),
+                "avg_weight": float(row.avg_weight) if row.avg_weight else None
+            }
+        
+        return list(timeline.values())
 

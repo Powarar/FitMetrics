@@ -16,7 +16,7 @@ from app.core.cache import cache_manager
 from app.services.user_service import UserService
 from app.core.security import decode_access_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def get_redis() -> Redis:
     return cache_manager.get_client()

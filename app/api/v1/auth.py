@@ -17,7 +17,7 @@ from app.core.security import create_access_token, decode_access_token
 from app.db.models.users import Users
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
 def get_user_service(

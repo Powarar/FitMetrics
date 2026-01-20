@@ -4,10 +4,11 @@ from uuid import uuid4
 
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+from app.core.config import settings
 
-SECRET_KEY = "CHANGE_ME_SUPER_SECRET"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
