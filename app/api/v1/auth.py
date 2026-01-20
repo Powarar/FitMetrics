@@ -1,10 +1,7 @@
-# app/api/v1/auth.py
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from jose import JWTError
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +10,6 @@ from app.db.session import get_session
 from app.schemas.users import UserCreate, UserOut
 from app.schemas.token import Token
 from app.services.user_service import UserService
-from app.core.security import create_access_token, decode_access_token
 from app.db.models.users import Users
 
 router = APIRouter(prefix="/auth", tags=["auth"])
