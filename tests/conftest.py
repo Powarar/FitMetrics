@@ -43,6 +43,7 @@ TestSessionLocal = async_sessionmaker(
 # DATABASE SETUP
 # ============================================================================
 
+
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_db():
     """Создаёт таблицы перед всеми тестами, удаляет после"""
@@ -61,11 +62,11 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     connection = await test_engine.connect()
     transaction = await connection.begin()
-    
+
     session = TestSessionLocal(bind=connection)
-    
+
     yield session
-    
+
     await session.close()
     await transaction.rollback()
     await connection.close()
@@ -75,17 +76,21 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 # HTTP CLIENT
 # ============================================================================
 
+
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """HTTP клиент с подменой зависимостей"""
+
     async def override_get_db():
         yield db_session
 
     class MockRedis:
         async def setex(self, *args, **kwargs):
             return True
+
         async def delete(self, *args, **kwargs):
             return True
+
         async def get(self, *args, **kwargs):
             return None
 
@@ -104,6 +109,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 # ============================================================================
 # USER FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession) -> Users:
@@ -125,6 +131,7 @@ async def authenticated_client(
     test_user: Users,
 ) -> AsyncGenerator[tuple[AsyncClient, Users], None]:
     """HTTP клиент с аутентифицированным пользователем"""
+
     async def override_get_current_user():
         return test_user
 
@@ -151,6 +158,7 @@ async def another_user(db_session: AsyncSession) -> Users:
 # WORKOUT FIXTURES
 # ============================================================================
 
+
 @pytest_asyncio.fixture
 async def user_with_workouts(db_session: AsyncSession) -> Users:
     """
@@ -158,7 +166,7 @@ async def user_with_workouts(db_session: AsyncSession) -> Users:
     - Bench Press: 3x10x80 кг = 2400 (2 дня назад)
     - Squat: 4x8x100 кг = 3200 (1 день назад)
     - Deadlift: 5x5x120 кг = 3000 (сегодня)
-    
+
     Total volume: 8600
     Avg volume: 2866.67
     """
@@ -175,7 +183,7 @@ async def user_with_workouts(db_session: AsyncSession) -> Users:
     bench = Exercise(name="Bench Press", muscle_group="Chest")
     squat = Exercise(name="Squat", muscle_group="Legs")
     deadlift = Exercise(name="Deadlift", muscle_group="Back")
-    
+
     db_session.add_all([bench, squat, deadlift])
     await db_session.commit()
     await db_session.refresh(bench)
@@ -212,7 +220,7 @@ async def user_with_workouts(db_session: AsyncSession) -> Users:
             performed_at=datetime.now(),
         ),
     ]
-    
+
     db_session.add_all(workouts)
     await db_session.commit()
     return user
@@ -244,7 +252,7 @@ async def user_with_old_workouts(db_session: AsyncSession) -> Users:
         total_volume=2400.0,
         performed_at=datetime.now() - timedelta(days=10),
     )
-    
+
     db_session.add(old_workout)
     await db_session.commit()
     return user
@@ -256,6 +264,7 @@ async def auth_client_with_workouts(
     user_with_workouts: Users,
 ) -> AsyncGenerator[tuple[AsyncClient, Users], None]:
     """HTTP клиент с пользователем, у которого есть тренировки"""
+
     async def override_get_current_user():
         return user_with_workouts
 
@@ -270,6 +279,7 @@ async def auth_client_with_old_workouts(
     user_with_old_workouts: Users,
 ) -> AsyncGenerator[tuple[AsyncClient, Users], None]:
     """HTTP клиент с пользователем, у которого есть старые тренировки"""
+
     async def override_get_current_user():
         return user_with_old_workouts
 

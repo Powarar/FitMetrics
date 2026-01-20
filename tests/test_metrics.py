@@ -18,12 +18,12 @@ class TestMetricsSummary:
 
         response = await client.get("/api/v1/metrics/summary?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "total_volume" in data
         assert "avg_volume" in data
         assert "workouts_count" in data
-        
+
         assert data["total_volume"] == 8600.0
         assert data["workouts_count"] == 3
         assert 2866.0 < data["avg_volume"] < 2867.0
@@ -38,7 +38,7 @@ class TestMetricsSummary:
 
         response = await client.get("/api/v1/metrics/summary?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["total_volume"] == 0.0
         assert data["avg_volume"] == 0.0
@@ -60,13 +60,13 @@ class TestMetricsSummary:
 
         response = await client.get("/api/v1/metrics/summary?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["workouts_count"] == 0
 
         response = await client.get("/api/v1/metrics/summary?days=30")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["workouts_count"] == 1
         assert data["total_volume"] == 2400.0
@@ -107,7 +107,7 @@ class TestMetricsSummary:
 
         response = await client.get("/api/v1/metrics/summary?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["workouts_count"] == 0
         assert data["total_volume"] == 0.0
@@ -126,11 +126,11 @@ class TestMetricsTimeline:
 
         response = await client.get("/api/v1/metrics/timeline?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
         assert len(data) == 3
-        
+
         for point in data:
             assert "date" in point
             assert "workouts_count" in point
@@ -164,7 +164,7 @@ class TestMetricsTimeline:
 
         response = await client.get("/api/v1/metrics/timeline?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         dates = [point["date"] for point in data]
         assert dates == sorted(dates)
@@ -245,7 +245,7 @@ class TestMetricsIntegration:
             "reps": 5,
             "weight": 100.0,
         }
-        
+
         create_response = await client.post("/api/v1/workouts/", json=payload)
         assert create_response.status_code == 200
 
@@ -270,7 +270,7 @@ class TestMetricsIntegration:
             "reps": 10,
             "weight": 80.0,
         }
-        
+
         payload2 = {
             "exercise_name": "Squat",
             "muscle_group": "Legs",
@@ -284,7 +284,7 @@ class TestMetricsIntegration:
 
         response = await client.get("/api/v1/metrics/timeline?days=7")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert len(data) == 1
         assert data[0]["workouts_count"] == 2

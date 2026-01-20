@@ -22,7 +22,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def get_user_service(
     session: AsyncSession = Depends(get_session),
-    redis_client: Redis = Depends(get_redis)
+    redis_client: Redis = Depends(get_redis),
 ) -> UserService:
     return UserService(session=session, redis_client=redis_client)
 
@@ -34,10 +34,10 @@ async def register_user(
 ) -> UserOut:
     user: Users = await service.register(user_in)
 
-    return user # type: ignore
+    return user  # type: ignore
 
 
-@router.post("/token", response_model=Token)
+@router.post("/login", response_model=Token)
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     service: UserService = Depends(get_user_service),
@@ -53,16 +53,14 @@ async def login(
 async def logout(
     current_user: Annotated[Users, Depends(get_current_user)],
     token: Annotated[str, Depends(oauth2_scheme)],
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
 ) -> None:
     await service.logout(token)
     return None
-
-
 
 
 @router.get("/me", response_model=UserOut)
 async def read_me(
     current_user: Annotated[Users, Depends(get_current_user)],
 ) -> UserOut:
-    return current_user # type: ignore
+    return current_user  # type: ignore

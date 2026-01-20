@@ -22,16 +22,10 @@ class MetricsService:
     @cached(key_pattern="metrics:summary:user:{user_id}:days:{days}", ttl=600)
     async def get_summary(self, days: int) -> MetricsSummaryRow:
         """Сводка метрик только для текущего пользователя."""
-        return await self._repo.get_summary(
-            user_id=self._user_id,
-            days=days
-        )
+        return await self._repo.get_summary(user_id=self._user_id, days=days)
 
     @cached(key_pattern="metrics:timeline:user:{user_id}:days:{days}", ttl=900)
     async def get_workout_timeline(self, days: int) -> list[WorkoutCountRow]:
         """Таймлайн тренировок только для текущего пользователя."""
-        rows = await self._repo.get_workout_timeline(
-            user_id=self._user_id,
-            days=days
-        )
+        rows = await self._repo.get_workout_timeline(user_id=self._user_id, days=days)
         return list(rows)

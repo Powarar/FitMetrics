@@ -13,13 +13,13 @@ from app.core.cache import cache_manager
 
 class WorkoutService:
     """Сервис для бизнес-логики работы с тренировками."""
-    
+
     __slots__ = ("_session", "_repo", "_user_id")
-    
+
     def __init__(self, session: AsyncSession, user_id: UUID) -> None:
         self._session = session
         self._repo = WorkoutRepository(session)
-        self._user_id = user_id  
+        self._user_id = user_id
 
     async def _invalidate_metrics_cache(self) -> None:
         """Инвалидация кэша только для текущего пользователя."""

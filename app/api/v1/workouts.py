@@ -9,6 +9,7 @@ from app.services.workout_service import WorkoutService
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
+
 @router.post("/", response_model=WorkoutOut)
 async def create_workout(
     payload: WorkoutCreate,
@@ -18,15 +19,13 @@ async def create_workout(
     service = WorkoutService(session=session, user_id=current_user.id)
     return await service.create_workout(payload)
 
+
 @router.get("/", response_model=list[WorkoutOut])
 async def list_workouts(
     limit: int = Query(10, ge=0),
-    offset: int = Query(0,ge=0),
+    offset: int = Query(0, ge=0),
     current_user: Users = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     service = WorkoutService(session=session, user_id=current_user.id)
     return await service.list_workouts(limit, offset)
-
-
-

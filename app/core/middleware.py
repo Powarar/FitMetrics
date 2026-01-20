@@ -9,9 +9,9 @@ logger = logging.getLogger("fitmetrics")
 
 EXCLUDED_PATHS = {"/health"}
 
+
 async def logging_middleware(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]]        
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     start = time.perf_counter()
 
@@ -25,6 +25,5 @@ async def logging_middleware(
             request.url.path,
             response.status_code,
             process_ms,
-
         )
     return response

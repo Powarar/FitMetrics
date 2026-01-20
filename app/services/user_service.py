@@ -8,7 +8,12 @@ from fastapi import HTTPException, status
 from app.db.models.users import Users
 from app.schemas.token import Token
 from app.schemas.users import UserCreate
-from app.core.security import create_access_token, decode_access_token, get_password_hash, verify_password
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    get_password_hash,
+    verify_password,
+)
 
 
 class UserService:
@@ -31,19 +36,15 @@ class UserService:
             hashed_password=get_password_hash(user_in.password.get_secret_value()),
             is_active=True,
         )
-        
+
         self.session.add(user)
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(user)
         return user
 
-
-
     async def authenticate(self, email: str, password: str) -> Token:
-        result = await self.session.execute(
-            select(Users).where(Users.email == email)
-        )
+        result = await self.session.execute(select(Users).where(Users.email == email))
         user: Users | None = result.scalar_one_or_none()
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(
@@ -58,11 +59,8 @@ class UserService:
         access_token = create_access_token({"sub": str(user.id)})
         return Token(access_token=access_token)
 
-
     async def get_by_id(self, user_id):
-        result = await self.session.execute(
-            select(Users).where(Users.id == user_id)
-        )
+        result = await self.session.execute(select(Users).where(Users.id == user_id))
         user: Users | None = result.scalar_one_or_none()
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
@@ -76,17 +74,12 @@ class UserService:
 
         if not jti or not exp:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
             )
 
         now = datetime.now().timestamp()
         ttl = int(exp - now)
 
         if ttl > 0 and self.redis:
-            await self.redis.setex(
-                f"blacklist:{jti}",
-                ttl,
-                "revoked"
-            )
+            await self.redis.setex(f"blacklist:{jti}", ttl, "revoked")
         return None

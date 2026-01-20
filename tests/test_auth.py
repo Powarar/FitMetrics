@@ -18,7 +18,7 @@ class TestAuth:
 
         response = await client.get("/api/v1/auth/me")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["email"] == user.email
         assert data["id"] == str(user.id)

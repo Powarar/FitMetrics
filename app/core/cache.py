@@ -13,6 +13,7 @@ from redis.asyncio.client import Pipeline
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.INFO)
 
+
 class CacheManager:
     __slots__ = ("_redis", "_default_ttl", "_prefix", "_redis_url")
 
@@ -31,7 +32,6 @@ class CacheManager:
         if not self._redis:
             raise RuntimeError("Redis not connected")
         return self._redis
-
 
     async def connect(self) -> None:
         self._redis = await aioredis.from_url(
@@ -141,7 +141,7 @@ class CacheManager:
 
 
 cache_manager = CacheManager(
-    redis_url="",          # будет установлен в main.py из настроек
+    redis_url="",  # будет установлен в main.py из настроек
     default_ttl=300,
     prefix="fitmetrics",
 )
@@ -161,7 +161,9 @@ def cached(
                 try:
                     cache_key = key_pattern.format(**kwargs)
                 except KeyError:
-                    logger.warning("Cannot build cache key from pattern %s", key_pattern)
+                    logger.warning(
+                        "Cannot build cache key from pattern %s", key_pattern
+                    )
                     return await func(*args, **kwargs)
 
             cached_result = await cache_manager.get(cache_key)

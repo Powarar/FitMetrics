@@ -27,7 +27,7 @@ class TestWorkoutsCreate:
 
         response = await client.post("/api/v1/workouts/", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["user_id"] == str(user.id)
         assert data["sets"] == 3
@@ -47,7 +47,7 @@ class TestWorkoutsCreate:
             "reps": 5,
             "weight": 100.0,
         }
-        
+
         response = await client.post("/api/v1/workouts/", json=payload)
         assert response.status_code == 401
 
@@ -63,7 +63,7 @@ class TestWorkoutsCreate:
     ):
         """Отсутствие обязательного поля возвращает 422"""
         client, _ = authenticated_client
-        
+
         payload = {
             "exercise_name": "Deadlift",
             "muscle_group": "Back",
@@ -99,7 +99,7 @@ class TestWorkoutsCreate:
     ):
         """Невалидные значения возвращают 422"""
         client, _ = authenticated_client
-        
+
         payload = {
             "exercise_name": "Squat",
             "muscle_group": "Legs",
@@ -119,7 +119,7 @@ class TestWorkoutsCreate:
     ):
         """muscle_group имеет дефолт 'general'"""
         client, _ = authenticated_client
-        
+
         payload = {
             "exercise_name": "Push-ups",
             "sets": 3,
@@ -129,7 +129,7 @@ class TestWorkoutsCreate:
 
         response = await client.post("/api/v1/workouts/", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["exercise"]["muscle_group"] == "general"
 
@@ -140,7 +140,7 @@ class TestWorkoutsCreate:
     ):
         """Несколько тренировок с одним упражнением используют один Exercise"""
         client, _ = authenticated_client
-        
+
         payload1 = {
             "exercise_name": "Bench Press",
             "muscle_group": "Chest",
@@ -148,7 +148,7 @@ class TestWorkoutsCreate:
             "reps": 10,
             "weight": 80.0,
         }
-        
+
         payload2 = {
             "exercise_name": "Bench Press",
             "muscle_group": "Chest",
@@ -159,10 +159,10 @@ class TestWorkoutsCreate:
 
         response1 = await client.post("/api/v1/workouts/", json=payload1)
         assert response1.status_code == 200
-        
+
         response2 = await client.post("/api/v1/workouts/", json=payload2)
         assert response2.status_code == 200
-        
+
         ex1_id = response1.json()["exercise"]["id"]
         ex2_id = response2.json()["exercise"]["id"]
         assert ex1_id == ex2_id
@@ -181,10 +181,10 @@ class TestWorkoutsList:
 
         response = await client.get("/api/v1/workouts/")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert len(data) == 3
-        
+
         for workout in data:
             assert workout["user_id"] == str(user.id)
             assert "exercise" in workout
@@ -254,14 +254,14 @@ class TestWorkoutsIntegration:
             "reps": 5,
             "weight": 100.0,
         }
-        
+
         create_response = await client.post("/api/v1/workouts/", json=payload)
         assert create_response.status_code == 200
         created = create_response.json()
 
         list_response = await client.get("/api/v1/workouts/")
         assert list_response.status_code == 200
-        
+
         workouts = list_response.json()
         assert len(workouts) == 1
         assert workouts[0]["id"] == created["id"]
