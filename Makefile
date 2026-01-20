@@ -8,10 +8,19 @@ RESET := \033[0m
 # По умолчанию показываем help
 .DEFAULT_GOAL := help
 
-help: ## Показать все доступные команды
+help:
 	@echo "$(GREEN)Доступные команды:$(RESET)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-18s$(RESET) %s\n", $$1, $$2}'
+	@echo "  $(YELLOW)build$(RESET)          Собрать Docker образы"
+	@echo "  $(YELLOW)up$(RESET)             Поднять все сервисы в фоне"
+	@echo "  $(YELLOW)down$(RESET)           Остановить и удалить контейнеры"
+	@echo "  $(YELLOW)dev$(RESET)            Запустить в dev режиме (с rebuild)"
+	@echo "  $(YELLOW)shell$(RESET)          Открыть bash в контейнере api"
+	@echo "  $(YELLOW)migrate$(RESET)        Применить миграции Alembic"
+	@echo "  $(YELLOW)test$(RESET)           Запустить все тесты"
+	@echo "  $(YELLOW)lint$(RESET)           Проверить код ruff"
+	@echo "  $(YELLOW)type-check$(RESET)     Проверить типы mypy"
+	@echo "  $(YELLOW)clean$(RESET)          Удалить контейнеры/volumes/images"
+
 
 # ==================== Docker ====================
 
@@ -33,8 +42,8 @@ stop: ## Остановить контейнеры (не удаляя)
 logs: ## Показать логи всех сервисов (Ctrl+C для выхода)
 	docker-compose logs -f
 
-logs-app: ## Показать логи только приложения
-	docker-compose logs -f app
+logs-api: ## Показать логи только приложения
+	docker-compose logs -f api
 
 ps: ## Показать статус контейнеров
 	docker-compose ps
@@ -44,55 +53,58 @@ ps: ## Показать статус контейнеров
 dev: ## Запустить в dev режиме (с rebuild)
 	docker-compose up --build
 
-shell: ## Открыть bash в контейнере app
-	docker-compose exec app bash
+shell: ## Открыть bash в контейнере api
+	docker-compose exec api bash
 
 shell-db: ## Открыть psql в Postgres
 	docker-compose exec postgres psql -U postgres -d fitmetrics
 
 python: ## Открыть Python REPL в контейнере
-	docker-compose exec app python
+	docker-compose exec api python
 
 # ==================== Database ====================
 
+psql: ## Открыть psql в контейнере
+	docker compose exec postgres psql -U sportuser -d sportdb
+
 migrate: ## Применить миграции Alembic
-	docker-compose exec app alembic upgrade head
+	docker-compose exec api alembic upgrade head
 
 makemigrations: ## Создать новую миграцию (использование: make makemigrations m="описание")
-	docker-compose exec app alembic revision --autogenerate -m "$(m)"
+	docker-compose exec api alembic revision --autogenerate -m "$(m)"
 
 downgrade: ## Откатить последнюю миграцию
-	docker-compose exec app alembic downgrade -1
+	docker-compose exec api alembic downgrade -1
 
 db-reset: ## Пересоздать БД (УДАЛИТ ВСЕ ДАННЫЕ!)
 	docker-compose down -v
 	docker-compose up -d postgres redis
 	@echo "$(YELLOW)Ждём запуска Postgres...$(RESET)"
 	@sleep 3
-	docker-compose up -d app
+	docker-compose up -d api
 	$(MAKE) migrate
 
 # ==================== Testing ====================
 
 test: ## Запустить все тесты
-	docker-compose exec app pytest tests/ -v
+	docker-compose exec api pytest tests/ -v
 
 test-cov: ## Запустить тесты с покрытием
-	docker-compose exec app pytest tests/ --cov=app --cov-report=html --cov-report=term
+	docker-compose exec api pytest tests/ --cov=api --cov-report=html --cov-report=term
 
 test-watch: ## Запустить тесты в watch режиме
-	docker-compose exec app ptw tests/ -- -v
+	docker-compose exec api ptw tests/ -- -v
 
 # ==================== Code Quality ====================
 
 lint: ## Проверить код с ruff
-	docker-compose exec app ruff check app/
+	docker-compose exec api ruff check api/
 
 format: ## Отформатировать код с ruff
-	docker-compose exec app ruff format app/
+	docker-compose exec api ruff format api/
 
 type-check: ## Проверить типы с mypy
-	docker-compose exec app mypy app/
+	docker-compose exec api mypy api/
 
 # ==================== Cleanup ====================
 
@@ -134,7 +146,7 @@ init: ## Первичная настройка проекта
 	@echo "$(GREEN)Инициализация проекта...$(RESET)"
 	docker-compose up -d postgres redis
 	@sleep 3
-	docker-compose up -d app
+	docker-compose up -d api
 	@sleep 2
 	$(MAKE) migrate
 	@echo "$(GREEN)✓ Проект готов! API: http://localhost:8000/docs$(RESET)"
@@ -148,5 +160,5 @@ restore: ## Восстановить БД из бэкапа (использов�
 	@echo "$(GREEN)БД восстановлена!$(RESET)"
 
 seed: ## Заполнить БД тестовыми данными
-	docker-compose exec app python scripts/seed_db.py
+	docker-compose exec api python scripts/seed_db.py
 	

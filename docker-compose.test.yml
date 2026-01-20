@@ -1,0 +1,7 @@
+services:
+  postgres_test:
+    image: postgres:15-alpine
+    env_file:
+      - .env.test
+    ports:
+      - "5433:5432"

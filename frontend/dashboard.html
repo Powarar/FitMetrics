@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitMetrics - Панель управления</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <rect width="40" height="40" rx="8" fill="url(#gradient)"/>
+                    <path d="M20 10L12 15V25L20 30L28 25V15L20 10Z" fill="white"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
+                            <stop offset="0%" stop-color="#667eea"/>
+                            <stop offset="100%" stop-color="#764ba2"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>FitMetrics</h1>
+            </div>
+            <div class="user-info">
+                <span id="username">Пользователь</span>
+                <button class="btn-logout" onclick="logout()">Выход</button>
+            </div>
+        </header>
+
+        <main id="dashboard">
+            <div class="filter-section">
+                <div class="filter-label">📅 Период:</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="setTimePeriod(7)">7 дней</button>
+                    <button class="filter-btn" onclick="setTimePeriod(30)">30 дней</button>
+                    <button class="filter-btn" onclick="setTimePeriod(90)">90 дней</button>
+                    <button class="filter-btn" onclick="setTimePeriod(365)">Год</button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Всего объем</div>
+                        <div class="stat-value" id="total-volume">0 кг</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Тренировок</div>
+                        <div class="stat-value" id="workouts-count">0</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <line x1="12" y1="2" x2="12" y2="22"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Средний объем</div>
+                        <div class="stat-value" id="avg-volume">0 кг</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>📊 Тренировочный объем</h3>
+                    <canvas id="volumeChart"></canvas>
+                </div>
+
+                <div class="chart-card">
+                    <h3>💪 Количество тренировок</h3>
+                    <canvas id="workoutsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>⚖️ Средний вес</h3>
+                    <canvas id="avgWeightChart"></canvas>
+                </div>
+
+                <div class="chart-card">
+                    <h3>🏋️ Подходы</h3>
+                    <canvas id="setsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="workouts-section">
+                <div class="section-header">
+                    <h2>📋 Последние тренировки</h2>
+                    <button class="btn-primary" onclick="showAddWorkoutModal()">+ Добавить</button>
+                </div>
+                <div id="workouts-list" class="workouts-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="add-workout-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Добавить тренировку</h2>
+                <button class="btn-close" onclick="closeAddWorkoutModal()">×</button>
+            </div>
+            <form id="add-workout-form" onsubmit="handleAddWorkout(event); return false;">
+                <div class="form-group">
+                    <label for="exercise-name">Упражнение</label>
+                    <input type="text" id="exercise-name" placeholder="Жим лежа" required>
+                </div>
+                <div class="form-group">
+                    <label for="muscle-group">Группа мышц</label>
+                    <input type="text" id="muscle-group" placeholder="Грудь" value="general">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sets">Подходы</label>
+                        <input type="number" id="sets" min="1" max="50" value="3" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reps">Повторения</label>
+                        <input type="number" id="reps" min="1" max="200" value="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="weight">Вес (кг)</label>
+                        <input type="number" id="weight" min="0" step="0.5" value="20" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Добавить</button>
+                <div id="add-workout-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
