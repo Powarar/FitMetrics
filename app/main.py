@@ -47,8 +47,3 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(workout_router, prefix="/api/v1")
 app.include_router(metrics_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
-
-
-@app.get("/")
-def base():
-    return {"server": "ok"}

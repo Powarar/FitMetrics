@@ -1,40 +1,64 @@
 services:
   postgres:
+    container_name: fit-postgres
     image: postgres:15-alpine
-
     env_file:
       - .env
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fitmetrics-net
+    restart: unless-stopped
 
   redis:
+    container_name: fit-redis
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    networks:
+      - fitmetrics-net
+    restart: unless-stopped
 
   api:
+    container_name: fit-api
     build: .
-    container_name: api
     working_dir: /app
-    ports:
-      - "8000:8000"
-
     env_file:
       - .env
-    
     depends_on:
       - postgres
       - redis
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
+        test: ["CMD", "python", "-c", "import httpx;
+          httpx.get('http://localhost:8000/api/v1/health')"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 20s
+
     volumes:
       - .:/app
+    networks:
+      - fitmetrics-net
+    restart: unless-stopped
+
+  nginx:
+    container_name: fit-nginx
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - fitmetrics-net
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+
+networks:
+  fitmetrics-net:
+    driver: bridge
