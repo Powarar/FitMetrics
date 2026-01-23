@@ -1,27 +1,3 @@
-.PHONY: help build up down restart logs shell test migrate makemigrations clean dev prod
-
-# Цвета для вывода
-YELLOW := \033[1;33m
-GREEN := \033[1;32m
-RESET := \033[0m
-
-# По умолчанию показываем help
-.DEFAULT_GOAL := help
-
-help:
-	@echo "$(GREEN)Доступные команды:$(RESET)"
-	@echo "  $(YELLOW)build$(RESET)          Собрать Docker образы"
-	@echo "  $(YELLOW)up$(RESET)             Поднять все сервисы в фоне"
-	@echo "  $(YELLOW)down$(RESET)           Остановить и удалить контейнеры"
-	@echo "  $(YELLOW)dev$(RESET)            Запустить в dev режиме (с rebuild)"
-	@echo "  $(YELLOW)shell$(RESET)          Открыть bash в контейнере api"
-	@echo "  $(YELLOW)migrate$(RESET)        Применить миграции Alembic"
-	@echo "  $(YELLOW)test$(RESET)           Запустить все тесты"
-	@echo "  $(YELLOW)lint$(RESET)           Проверить код ruff"
-	@echo "  $(YELLOW)type-check$(RESET)     Проверить типы mypy"
-	@echo "  $(YELLOW)clean$(RESET)          Удалить контейнеры/volumes/images"
-
-
 # ==================== Docker ====================
 
 build: ## Собрать Docker образы
