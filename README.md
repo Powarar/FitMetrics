@@ -1,13 +1,12 @@
-
 <div align="center">
 
 # 💪 FitMetrics
 
-**Полноценное приложение для фитнес‑трекинга: FastAPI бэкенд + красивый фронтенд‑дашборд**
+**Приложение для фитнес‑трекинга!**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-cache-red.svg)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -27,7 +26,8 @@
 ## 📋 Описание
 
 FitMetrics — это асинхронный REST API с дашбордом для отслеживания тренировок, тренировочного объёма и прогресса по упражнениям.  
-Бэкенд написан на FastAPI с PostgreSQL и Redis, фронтенд — лёгкий одностраничный dashboard на чистом HTML/CSS/JS с графиками на Chart.js.
+Бэкенд написан на FastAPI с PostgreSQL и Redis, фронтенд — лёгкий одностраничный dashboard на чистом HTML/CSS/JS с графиками на Chart.js.  
+Всё приложение разворачивается через Docker Compose с Nginx в качестве reverse proxy.
 
 ---
 
@@ -52,7 +52,9 @@ FitMetrics — это асинхронный REST API с дашбордом дл
   - Кэширование через Redis (общий `cache_manager`)
   - Alembic‑миграции
   - Docker + Docker Compose для быстрого развёртывания
+  - Nginx как reverse proxy для API и статики
   - Логирующий HTTP‑middleware
+  - Health-check эндпоинт для мониторинга
 
 ### Фронтенд (Dashboard)
 
@@ -88,11 +90,11 @@ FitMetrics — это асинхронный REST API с дашбордом дл
 | Категория          | Технологии                                  |
 |--------------------|---------------------------------------------|
 | **Backend**        | FastAPI, Python 3.11+, Pydantic             |
-| **База данных**    | PostgreSQL, SQLAlchemy 2.0 (async), Alembic |
-| **Кэширование**    | Redis, собственный `cache_manager`          |
+| **База данных**    | PostgreSQL 15, SQLAlchemy 2.0 (async), Alembic |
+| **Кэширование**    | Redis 7, собственный `cache_manager`        |
 | **Фронтенд**       | HTML5, CSS3 (Grid/Flexbox), Vanilla JS, Chart.js |
+| **Web Server**     | Nginx (reverse proxy и статика)             |
 | **Контейнеризация**| Docker, Docker Compose                      |
-| **Планировщик**    | Apache Airflow (каталог `airflow/`)         |
 | **Тестирование**   | pytest, pytest-asyncio                      |
 
 ---
@@ -115,18 +117,31 @@ cd FitMetrics
 # 2. Создать .env по примеру
 cp .env.example .env
 
-# 3. Первый запуск (БД + Redis + миграции + приложение)
-make init
-# или, вручную:
-# docker-compose up -d
-# docker-compose exec app alembic upgrade head
+# 3. Запустить все сервисы
+docker-compose up -d
+
+# 4. Применить миграции
+docker-compose exec api alembic upgrade head
 ```
 
 После успешного запуска:
 
-- API: http://localhost:8000  
-- Swagger UI: http://localhost:8000/docs  
-- Health‑check: http://localhost:8000/health  
+- **Фронтенд**: http://localhost  
+- **API**: http://localhost/api  
+- **Swagger UI**: http://localhost/docs  
+- **Health‑check**: http://localhost/api/v1/health  
+
+### Архитектура контейнеров
+
+Docker Compose поднимает 4 сервиса:
+
+1. **postgres** — база данных PostgreSQL 15
+2. **redis** — кэш и хранилище сессий
+3. **api** — FastAPI приложение (порт 8000 внутри контейнера)
+4. **nginx** — веб-сервер на порту 80:
+   - Проксирует `/api/` на FastAPI
+   - Раздаёт статику фронтенда из `/`
+   - Предоставляет доступ к `/docs` и `/openapi.json`
 
 ### Локальная разработка бэкенда (без Docker для кода)
 
@@ -142,14 +157,20 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # 3. Поднять только инфраструктуру (Postgres + Redis)
-make db-local
-# или docker-compose up -d postgres redis
+docker-compose up -d postgres redis
 
 # 4. Применить миграции
 alembic upgrade head
 
 # 5. Запустить приложение
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Для локальной разработки фронтенда можно открыть `frontend/index.html` напрямую в браузере или запустить простой HTTP-сервер:
+
+```bash
+cd frontend
+python -m http.server 3000
 ```
 
 ---
@@ -165,27 +186,45 @@ uvicorn app.main:app --reload
 - `auth.js` — логика регистрации/логина и редиректов
 - `dashboard.js` — загрузка метрик/тренировок и отрисовка графиков
 
-### Запуск фронтенда
+### Nginx конфигурация
 
-```bash
-cd frontend
-python -m http.server 3000
-```
+Nginx настроен как reverse proxy и раздаёт статику. Конфигурация в `nginx.conf`:
 
-Фронтенд будет доступен по адресу:  
-http://localhost:3000
+```nginx
+server {
+    listen 80;
+    server_name localhost;
 
-По умолчанию фронтенд ожидает, что API работает на `http://localhost:8000/api/v1`.  
-Это задаётся в:
+    # Статика фронтенда
+    location / {
+        root /usr/share/nginx/html;
+        try_files $uri /index.html;
+        index index.html;
+    }
 
-```javascript
-// frontend/auth.js и frontend/dashboard.js
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+    # Проксирование API
+    location /api/ {
+        proxy_pass http://api:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Swagger документация
+    location /docs {
+        proxy_pass http://api:8000/docs;
+    }
+
+    location /openapi.json {
+        proxy_pass http://api:8000/openapi.json;
+    }
+}
 ```
 
 ### CORS‑настройки FastAPI
 
-В `app/main.py` уже подключён `CORSMiddleware`:
+В `app/main.py` подключён `CORSMiddleware`:
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
@@ -199,32 +238,33 @@ app.add_middleware(
 )
 ```
 
-При необходимости можно добавить другие origin’ы (например, прод‑URL).
+При необходимости добавьте другие origin'ы для прод-окружения.
 
 ---
 
 ## 📚 API Документация
 
-После запуска бэкенда доступны:
+После запуска доступны:
 
-- Swagger UI: http://localhost:8000/docs  
-- ReDoc: http://localhost:8000/redoc  
-- OpenAPI JSON: http://localhost:8000/openapi.json  
+- **Swagger UI**: http://localhost/docs  
+- **ReDoc**: http://localhost/redoc  
+- **OpenAPI JSON**: http://localhost/openapi.json  
 
 ### Авторизация
 
-- Регистрация: `POST /api/v1/auth/register`
-- Логин (получение JWT): `POST /api/v1/auth/login`
+- **Регистрация**: `POST /api/v1/auth/register`
+- **Логин (получение JWT)**: `POST /api/v1/auth/login`
   - Формат: `application/x-www-form-urlencoded`
   - Параметры: `username` (email), `password`
-- Текущий пользователь: `GET /api/v1/auth/me` (заголовок `Authorization: Bearer <token>`)
+- **Текущий пользователь**: `GET /api/v1/auth/me` (заголовок `Authorization: Bearer <token>`)
+- **Logout**: `POST /api/v1/auth/logout` (инвалидирует токен в Redis)
 
 ### Примеры запросов
 
 #### Логин и получение токена
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/auth/login" \
+curl -X POST "http://localhost/api/v1/auth/login" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=test@fitmetrics.com&password=your_password"
 ```
@@ -232,7 +272,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/login" \
 #### Создать тренировку
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/workouts/" \
+curl -X POST "http://localhost/api/v1/workouts/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -247,21 +287,21 @@ curl -X POST "http://localhost:8000/api/v1/workouts/" \
 #### Получить последние тренировки
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/workouts?limit=10&offset=0" \
+curl -X GET "http://localhost/api/v1/workouts?limit=10&offset=0" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### Сводка метрик за N дней
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/metrics/summary?days=30" \
+curl -X GET "http://localhost/api/v1/metrics/summary?days=30" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### Таймлайн для графиков
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/metrics/timeline?days=30" \
+curl -X GET "http://localhost/api/v1/metrics/timeline?days=30" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -275,66 +315,105 @@ curl -X GET "http://localhost:8000/api/v1/metrics/timeline?days=30" \
 
 ### Структура каталогов
 
-```bash
-app/
-├── api/
-│   ├── deps.py                # общие зависимости (DB, Redis, current_user)
-│   └── v1/
-│       ├── auth.py            # регистрация, логин, logout, /me
-│       ├── workouts.py        # CRUD для тренировок
-│       └── metrics.py         # агрегированные метрики и таймлайн
-├── core/
-│   ├── config.py              # настройки (env, BASE_DIR и т.п.)
-│   ├── security.py            # JWT, пароли
-│   ├── cache.py               # cache_manager (Redis)
-│   └── middleware.py          # логирующий HTTP‑middleware
-├── db/
-│   ├── models/                # ORM‑модели (Users, Workouts, Exercises и т.д.)
-│   ├── session.py             # создание AsyncSession
-│   └── base.py / __init__.py  # базовая декларация моделей
-├── repositories/
-│   ├── workout_repo.py        # слой доступа к БД для тренировок
-│   └── metrics_repo.py        # запросы для агрегированной статистики
-├── schemas/
-│   ├── users.py               # UserCreate, UserOut
-│   ├── workout.py             # WorkoutCreate, WorkoutOut, MetricsOut
-│   ├── metrics.py             # MetricsSummaryResponse, TimelineItem
-│   └── token.py               # Token (access_token, token_type)
-├── services/
-│   ├── user_service.py        # регистрация, аутентификация, logout
-│   ├── workout_service.py     # бизнес‑логика по тренировкам
-│   └── metrics_service.py     # расчёт сводки и таймлайна
-└── main.py                    # точка входа FastAPI, роуты, CORS, lifespan
+```
+FitMetrics/
+├── app/
+│   ├── api/
+│   │   ├── deps.py              # общие зависимости (DB, Redis, current_user)
+│   │   └── v1/
+│   │       ├── auth.py          # регистрация, логин, logout, /me
+│   │       ├── workouts.py      # CRUD для тренировок
+│   │       ├── metrics.py       # агрегированные метрики и таймлайн
+│   │       └── health.py        # health-check эндпоинт
+│   ├── core/
+│   │   ├── config.py            # настройки (env, BASE_DIR и т.п.)
+│   │   ├── security.py          # JWT, пароли
+│   │   ├── cache.py             # cache_manager (Redis)
+│   │   └── middleware.py        # логирующий HTTP‑middleware
+│   ├── db/
+│   │   ├── models/              # ORM‑модели (Users, Workouts, Exercises)
+│   │   ├── session.py           # создание AsyncSession
+│   │   └── base.py              # базовая декларация моделей
+│   ├── repositories/
+│   │   ├── workout_repo.py      # слой доступа к БД для тренировок
+│   │   └── metrics_repo.py      # запросы для агрегированной статистики
+│   ├── schemas/
+│   │   ├── users.py             # UserCreate, UserOut
+│   │   ├── workout.py           # WorkoutCreate, WorkoutOut
+│   │   ├── metrics.py           # MetricsSummaryResponse, TimelineItem
+│   │   └── token.py             # Token (access_token, token_type)
+│   ├── services/
+│   │   ├── user_service.py      # регистрация, аутентификация, logout
+│   │   ├── workout_service.py   # бизнес‑логика по тренировкам
+│   │   └── metrics_service.py   # расчёт сводки и таймлайна
+│   └── main.py                  # точка входа FastAPI, роуты, CORS, lifespan
+├── frontend/
+│   ├── index.html               # страница входа
+│   ├── register.html            # страница регистрации
+│   ├── dashboard.html           # основной дашборд
+│   ├── styles.css               # стили
+│   ├── auth.js                  # логика авторизации
+│   └── dashboard.js             # логика дашборда и графиков
+├── tests/
+│   ├── conftest.py              # фикстуры, тестовый клиент
+│   ├── test_auth.py             # тесты регистрации/логина
+│   ├── test_workouts.py         # тесты API тренировок
+│   └── test_metrics.py          # тесты метрик/таймлайна
+├── alembic/                     # миграции базы данных
+├── docker-compose.yml           # конфигурация Docker Compose
+├── Dockerfile                   # образ FastAPI приложения
+├── nginx.conf                   # конфигурация Nginx
+├── requirements.txt             # Python зависимости
+├── .env.example                 # пример переменных окружения
+└── README.md
 ```
 
+### Слои приложения
 
+1. **API Layer** (`app/api/`) — FastAPI роутеры, обработка HTTP-запросов
+2. **Service Layer** (`app/services/`) — бизнес-логика, оркестрация
+3. **Repository Layer** (`app/repositories/`) — работа с БД через SQLAlchemy
+4. **Models** (`app/db/models/`) — ORM модели SQLAlchemy
+5. **Schemas** (`app/schemas/`) — Pydantic модели для валидации и сериализации
+
+---
 
 ## 🧪 Тестирование
 
 Тесты лежат в каталоге `tests/`.
 
-Примеры команд:
+### Запуск тестов
 
 ```bash
-# Все тесты (через Make)
-make test
+# Все тесты
+pytest
 
 # С coverage
-make test-cov
+pytest --cov=app --cov-report=html
 
 # Конкретный тестовый модуль
 pytest tests/test_workouts.py -v
+
+# С выводом print statements
+pytest -s
 ```
 
-Структура:
+### Структура тестов
 
-```bash
+```
 tests/
 ├── conftest.py            # фикстуры, тестовый клиент, test DB
-├── test_auth.py           # тесты регистрации/логина
+├── test_auth.py           # тесты регистрации/логина/logout
 ├── test_workouts.py       # тесты API тренировок
 └── test_metrics.py        # тесты метрик/таймлайна
 ```
+
+### Тестовое окружение
+
+Тесты используют:
+- Mock Redis через fakeredis
+- Pytest fixtures для создания тестовых данных
+- Асинхронный TestClient от httpx
 
 ---
 
@@ -343,57 +422,117 @@ tests/
 Создай `.env` в корне по примеру `.env.example`:
 
 ```env
-# Database
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/fitmetrics
+POSTGRES_USER=sportuser
+POSTGRES_PASSWORD=sportpass
+POSTGRES_DB=sportdb
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/fitmetrics
+SYNC_DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/fitmetrics
 
-# Redis
 REDIS_URL=redis://redis:6379/0
-
-# JWT
-SECRET_KEY=your-super-secret-key-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# App
-DEBUG=True
-API_V1_PREFIX=/api/v1
 CACHE_TTL_DEFAULT=300
+
+SECRET_KEY=super-secret-key-change-me-2025
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=30
+ALGORITHM=HS256
 ```
+
+**⚠️ Важно**: Измени `SECRET_KEY` на случайную строку в продакшене!
 
 ---
 
-## 🚢 Deployment (кратко)
+## 🚢 Deployment
 
-Production‑развёртывание также возможно через Docker Compose:
+### Docker Compose Production
+
+Для production используй отдельный `docker-compose.prod.yml` с:
+- Отключённым debug режимом
+- Healthcheck'ами для всех сервисов
+- Ограничениями ресурсов
+- Secrets вместо .env файлов
+- SSL сертификатами для Nginx
 
 ```bash
-# Собрать образы
-make prod-build
-
-# Запустить в проде
-make prod
+# Запуск в проде
+docker-compose -f docker-compose.prod.yml up -d
 
 # Логи
-make prod-logs
+docker-compose -f docker-compose.prod.yml logs -f
 ```
+
+### Рекомендации для продакшена
+
+1. Используй **gunicorn** или **uvicorn workers** вместо `--reload`
+2. Настрой **SSL/TLS** в Nginx (Let's Encrypt)
+3. Включи **rate limiting** в Nginx
+4. Настрой **автоматические бэкапы** PostgreSQL
+5. Используй **Docker secrets** для паролей
+6. Добавь **мониторинг** (Prometheus + Grafana)
+7. Настрой **логирование** в файлы и log aggregation
+
+---
+
+## 🔧 Полезные команды
+
+```bash
+# Просмотр логов всех контейнеров
+docker-compose logs -f
+
+# Логи конкретного сервиса
+docker-compose logs -f api
+
+# Перезапуск сервиса
+docker-compose restart api
+
+# Пересборка после изменений в Dockerfile
+docker-compose build --no-cache api
+docker-compose up -d
+
+# Остановка всех контейнеров
+docker-compose down
+
+# Остановка с удалением volumes (⚠️ удалит данные БД!)
+docker-compose down -v
+
+# Выполнение команды в контейнере
+docker-compose exec api alembic upgrade head
+docker-compose exec postgres psql -U postgres -d fitmetrics
+
+# Создание новой миграции
+docker-compose exec api alembic revision --autogenerate -m "description"
+```
+
+---
 
 ## 🤝 Вклад
 
-1. Создай ветку: `git checkout -b feature/amazing-feature`  
-2. Внеси изменения + тесты  
-3. Прогон: `make format && make lint && make test`  
-4. Открой Pull Request
+Contributions приветствуются! Следуй этим шагам:
+
+1. Fork репозитория
+2. Создай ветку: `git checkout -b feature/amazing-feature`
+3. Внеси изменения и добавь тесты
+4. Убедись что тесты проходят: `pytest`
+5. Закоммить: `git commit -m 'Add amazing feature'`
+6. Push в ветку: `git push origin feature/amazing-feature`
+7. Открой Pull Request
+
+### Code Style
+
+Проект следует PEP 8 и использует:
+- **Black** для форматирования кода
+- **isort** для сортировки импортов
+- **flake8** для линтинга
+- **mypy** для type checking
 
 ---
-
 ## 👨‍💻 Автор
-
-**Powarar**
+**Pavel Safonov**
 
 - GitHub: [@Powarar](https://github.com/Powarar)
 - Telegram: [@safonovpavel](https://t.me/safonovpavel)
 
 ---
+
 
 <div align="center">
 
@@ -402,4 +541,3 @@ make prod-logs
 [⬆ Вернуться к началу](#-fitmetrics)
 
 </div>
-```

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = '/api/v1';
 let authToken = localStorage.getItem('authToken');
 let currentPeriod = 7;
 let charts = {};

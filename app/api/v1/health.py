@@ -10,7 +10,7 @@ from app.api.deps import get_redis
 router = APIRouter(prefix="/health", tags=["system"])
 
 
-@router.get("", status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK)
 async def health(
     db: AsyncSession = Depends(get_session),
     redis: Redis = Depends(get_redis),
